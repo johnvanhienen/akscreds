@@ -41,13 +41,12 @@ func retrieveSubscriptionNames() ([]string, error) {
 	for _, subscription := range subscriptions {
 		subscriptionNames = append(subscriptionNames, subscription.Name)
 	}
-	fmt.Println(subscriptionNames)
-	subscriptionNames = scrubBlacklist(subscriptionNames)
-	fmt.Println(subscriptionNames)
+
+	subscriptionNames = removeBlacklistedSubscriptions(subscriptionNames)
 	return subscriptionNames, nil
 }
 
-func scrubBlacklist(subscriptions []string) []string {
+func removeBlacklistedSubscriptions(subscriptions []string) []string {
 	// TODO: Set blacklist via parameter/config
 	subscriptionBlacklist := []string{"Visual Studio Professional Subscription"}
 	for _, entry := range subscriptionBlacklist {
@@ -56,11 +55,11 @@ func scrubBlacklist(subscriptions []string) []string {
 	return subscriptions
 }
 
-func removeItemFromSlice(s []string, r string) []string {
-	for i, v := range s {
-		if v == r {
-			return append(s[:i], s[i+1:]...)
-		}
+func setSubscription(subscriptionName string) error {
+	cmd := exec.Command("az", "account", "set", "--subscription", fmt.Sprintf("%s", subscriptionName))
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("could not complete login, error: %s", err)
 	}
-	return s
+	return nil
 }
