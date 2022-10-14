@@ -22,7 +22,7 @@ type Subscription struct {
 	} `json:"user"`
 }
 
-func retrieveSubscriptionIds() ([]string, error) {
+func retrieveSubscriptionNames() ([]string, error) {
 	cmd := exec.Command("az", "account", "list")
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -34,13 +34,13 @@ func retrieveSubscriptionIds() ([]string, error) {
 
 	stdout := out.String()
 	var subscriptions []Subscription
-	var subscriptionIds []string
+	var subscriptionNames []string
 
 	json.Unmarshal([]byte(stdout), &subscriptions)
 
 	for _, subscription := range subscriptions {
-		subscriptionIds = append(subscriptionIds, subscription.Name)
+		subscriptionNames = append(subscriptionNames, subscription.Name)
 	}
 
-	return subscriptionIds, nil
+	return subscriptionNames, nil
 }
