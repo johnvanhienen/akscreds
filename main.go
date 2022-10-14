@@ -7,11 +7,10 @@ import (
 )
 
 func main() {
-	err := login()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
+	//err := login()
+	//if err != nil {
+	//	log.Fatalln(err)
+	//}
 	subscriptionNames, err := retrieveSubscriptionNames()
 	if err != nil {
 		log.Fatalln(err)
@@ -22,9 +21,19 @@ func main() {
 		if err != nil {
 			log.Fatalln(err)
 		}
-	}
-	fmt.Println(subscriptionNames)
+		fmt.Printf("Setting subscription name to: \"%s\"\n", subscriptionName)
 
+		//clusters, err := retrieveClusters()
+		//if err != nil {
+		//	log.Fatalln(err)
+		//}
+		//
+		//for _, cluster := range clusters {
+		//	fmt.Println(cluster.Name)
+		//	fmt.Println(cluster.ResourceGroup)
+		//}
+
+	}
 }
 
 func login() error {
@@ -38,7 +47,7 @@ func login() error {
 }
 
 func setSubscription(subscriptionName string) error {
-	cmd := exec.Command("az", "account", "set", "--subscription", subscriptionName)
+	cmd := exec.Command("az", "account", "set", "--subscription", fmt.Sprintf("%s", subscriptionName))
 	err := cmd.Run()
 	if err != nil {
 		return fmt.Errorf("could not complete login, error: %s", err)

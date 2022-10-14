@@ -41,6 +41,26 @@ func retrieveSubscriptionNames() ([]string, error) {
 	for _, subscription := range subscriptions {
 		subscriptionNames = append(subscriptionNames, subscription.Name)
 	}
-
+	fmt.Println(subscriptionNames)
+	subscriptionNames = scrubBlacklist(subscriptionNames)
+	fmt.Println(subscriptionNames)
 	return subscriptionNames, nil
+}
+
+func scrubBlacklist(subscriptions []string) []string {
+	// TODO: Set blacklist via parameter/config
+	subscriptionBlacklist := []string{"Visual Studio Professional Subscription"}
+	for _, entry := range subscriptionBlacklist {
+		subscriptions = removeItemFromSlice(subscriptions, entry)
+	}
+	return subscriptions
+}
+
+func removeItemFromSlice(s []string, r string) []string {
+	for i, v := range s {
+		if v == r {
+			return append(s[:i], s[i+1:]...)
+		}
+	}
+	return s
 }
