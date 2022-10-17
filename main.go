@@ -29,6 +29,7 @@ func main() {
 	config.fillDefaults()
 
 	versionFlag := flag.Bool("v", false, "Displays the version number of Akscreds and Go.")
+	allTenantFlag := flag.Bool("A", false, "Retrieve credentials from all tenants which are shown in 'az account list'")
 	kubeConfigLocationOpt := flag.String("f", config.kubeConfigLocation, "Kubeconfig file to update.")
 	flag.Parse()
 	if *versionFlag {
@@ -36,14 +37,22 @@ func main() {
 		os.Exit(0)
 	}
 
-	tenantId, err := loginAccount()
+	loggedInTenantId, err := loginAccount()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	subscriptionNames, err := retrieveSubscriptionNames(tenantId)
+	subscriptions := Subscriptions{}
+	subscriptions, err = retrieveAllSubscriptions()
 	if err != nil {
 		log.Fatalln(err)
+	}
+
+	var subscriptionNames []string
+	if *allTenantFlag {
+		subscriptionNames = subscriptions.getAllSubscriptionNames()
+	} else {
+		subscriptionNames = subscriptions.getAllSubscriptionNamesByTenantIds([]string{loggedInTenantId})
 	}
 
 	for _, subscriptionName := range subscriptionNames {
@@ -55,7 +64,7 @@ func main() {
 
 		clusters, err := retrieveClusters()
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 
 		for _, cluster := range clusters {

@@ -22,30 +22,56 @@ type Subscription struct {
 	} `json:"user"`
 }
 
-func retrieveSubscriptionNames(tenantId string) ([]string, error) {
+type Subscriptions struct {
+	subscriptions []Subscription
+}
+
+func retrieveAllSubscriptions() (Subscriptions, error) {
 	cmd := exec.Command("az", "account", "list")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
 
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve subscriptions, error: %s", err)
+		return Subscriptions{}, fmt.Errorf("could not retrieve subscriptions, error: %s", err)
 	}
 
+	var subscriptions Subscriptions
 	stdout := out.String()
-	var subscriptions []Subscription
+	err = json.Unmarshal([]byte(stdout), &subscriptions.subscriptions)
+	if err != nil {
+		return Subscriptions{}, err
+	}
+
+	return subscriptions, nil
+}
+
+func (s *Subscriptions) getFirstTenant() string {
+	return s.subscriptions[0].TenantID
+}
+
+func (s *Subscriptions) getAllSubscriptionNames() []string {
 	var subscriptionNames []string
 
-	json.Unmarshal([]byte(stdout), &subscriptions)
+	for _, subscription := range s.subscriptions {
+		subscriptionNames = append(subscriptionNames, subscription.Name)
+	}
+	subscriptionNames = removeBlacklistedSubscriptions(subscriptionNames)
+	return subscriptionNames
+}
 
-	for _, subscription := range subscriptions {
-		if subscription.HomeTenantID == tenantId {
-			subscriptionNames = append(subscriptionNames, subscription.Name)
+func (s *Subscriptions) getAllSubscriptionNamesByTenantIds(tenantIds []string) []string {
+	var subscriptionNames []string
+
+	for _, tenantId := range tenantIds {
+		for _, subscription := range s.subscriptions {
+			if tenantId == subscription.TenantID {
+				subscriptionNames = append(subscriptionNames, subscription.Name)
+			}
 		}
 	}
-
 	subscriptionNames = removeBlacklistedSubscriptions(subscriptionNames)
-	return subscriptionNames, nil
+	return subscriptionNames
 }
 
 func removeBlacklistedSubscriptions(subscriptions []string) []string {
