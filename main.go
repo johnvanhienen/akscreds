@@ -36,18 +36,18 @@ func main() {
 		os.Exit(0)
 	}
 
-	err := login()
+	tenantId, err := loginAccount()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	subscriptionNames, err := retrieveSubscriptionNames()
+	subscriptionNames, err := retrieveSubscriptionNames(tenantId)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	for _, subscriptionName := range subscriptionNames {
-		err := setSubscription(subscriptionName)
+		err := setActiveSubscription(subscriptionName)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -64,15 +64,6 @@ func main() {
 	}
 }
 
-func login() error {
-	cmd := exec.Command("az", "login")
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("could not complete login, error: %s", err)
-	}
-	return nil
-}
-
 func saveKubeConfig(clusterName string, resourceGroup string, file string) error {
 	cmd := exec.Command("az", "aks", "get-credentials",
 		"--name", clusterName,
@@ -82,6 +73,7 @@ func saveKubeConfig(clusterName string, resourceGroup string, file string) error
 	if err != nil {
 		return fmt.Errorf("could not save the credentials to the kubeconfig file %s, error: %s", file, err)
 	}
+
 	fmt.Printf("Succesfully saved credentials for %s to %s\n", clusterName, file)
 	return nil
 }

@@ -22,7 +22,7 @@ type Subscription struct {
 	} `json:"user"`
 }
 
-func retrieveSubscriptionNames() ([]string, error) {
+func retrieveSubscriptionNames(tenantId string) ([]string, error) {
 	cmd := exec.Command("az", "account", "list")
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -39,7 +39,9 @@ func retrieveSubscriptionNames() ([]string, error) {
 	json.Unmarshal([]byte(stdout), &subscriptions)
 
 	for _, subscription := range subscriptions {
-		subscriptionNames = append(subscriptionNames, subscription.Name)
+		if subscription.HomeTenantID == tenantId {
+			subscriptionNames = append(subscriptionNames, subscription.Name)
+		}
 	}
 
 	subscriptionNames = removeBlacklistedSubscriptions(subscriptionNames)
@@ -55,7 +57,7 @@ func removeBlacklistedSubscriptions(subscriptions []string) []string {
 	return subscriptions
 }
 
-func setSubscription(subscriptionName string) error {
+func setActiveSubscription(subscriptionName string) error {
 	cmd := exec.Command("az", "account", "set", "--subscription", fmt.Sprintf("%s", subscriptionName))
 	err := cmd.Run()
 	if err != nil {
