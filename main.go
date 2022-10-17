@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"runtime"
 )
 
@@ -30,6 +29,7 @@ func main() {
 
 	versionFlag := flag.Bool("v", false, "Displays the version number of Akscreds and Go.")
 	allTenantFlag := flag.Bool("A", false, "Retrieve credentials from all tenants which are shown in 'az account list'")
+	rewriteServerEndpointOpt := flag.String("r", "", "Rewrite server endpoint in from saved config to specified value. ")
 	kubeConfigLocationOpt := flag.String("f", config.kubeConfigLocation, "Kubeconfig file to update.")
 	flag.Parse()
 	if *versionFlag {
@@ -69,20 +69,10 @@ func main() {
 
 		for _, cluster := range clusters {
 			saveKubeConfig(cluster.Name, cluster.ResourceGroup, *kubeConfigLocationOpt)
+			if *rewriteServerEndpointOpt != "" {
+				rewriteClusterEndpoint(cluster.Name, *kubeConfigLocationOpt)
+			}
+			os.Exit(0)
 		}
 	}
-}
-
-func saveKubeConfig(clusterName string, resourceGroup string, file string) error {
-	cmd := exec.Command("az", "aks", "get-credentials",
-		"--name", clusterName,
-		"--resource-group", resourceGroup,
-		"--file", file)
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("could not save the credentials to the kubeconfig file %s, error: %s", file, err)
-	}
-
-	fmt.Printf("Succesfully saved credentials for %s to %s\n", clusterName, file)
-	return nil
 }
