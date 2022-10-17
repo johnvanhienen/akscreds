@@ -29,6 +29,7 @@ func main() {
 	config.fillDefaults()
 
 	versionFlag := flag.Bool("v", false, "Displays the version number of Akscreds and Go.")
+	allTenantFlag := flag.Bool("A", false, "Retrieve credentials from all tenants which are shown in 'az account list'")
 	kubeConfigLocationOpt := flag.String("f", config.kubeConfigLocation, "Kubeconfig file to update.")
 	flag.Parse()
 	if *versionFlag {
@@ -36,18 +37,26 @@ func main() {
 		os.Exit(0)
 	}
 
-	err := login()
+	loggedInTenantId, err := loginAccount()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	subscriptionNames, err := retrieveSubscriptionNames()
+	subscriptions := Subscriptions{}
+	subscriptions, err = retrieveAllSubscriptions()
 	if err != nil {
 		log.Fatalln(err)
+	}
+
+	var subscriptionNames []string
+	if *allTenantFlag {
+		subscriptionNames = subscriptions.getAllSubscriptionNames()
+	} else {
+		subscriptionNames = subscriptions.getAllSubscriptionNamesByTenantIds([]string{loggedInTenantId})
 	}
 
 	for _, subscriptionName := range subscriptionNames {
-		err := setSubscription(subscriptionName)
+		err := setActiveSubscription(subscriptionName)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -55,22 +64,13 @@ func main() {
 
 		clusters, err := retrieveClusters()
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 
 		for _, cluster := range clusters {
 			saveKubeConfig(cluster.Name, cluster.ResourceGroup, *kubeConfigLocationOpt)
 		}
 	}
-}
-
-func login() error {
-	cmd := exec.Command("az", "login")
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("could not complete login, error: %s", err)
-	}
-	return nil
 }
 
 func saveKubeConfig(clusterName string, resourceGroup string, file string) error {
@@ -82,6 +82,7 @@ func saveKubeConfig(clusterName string, resourceGroup string, file string) error
 	if err != nil {
 		return fmt.Errorf("could not save the credentials to the kubeconfig file %s, error: %s", file, err)
 	}
+
 	fmt.Printf("Succesfully saved credentials for %s to %s\n", clusterName, file)
 	return nil
 }
