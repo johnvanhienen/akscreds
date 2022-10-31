@@ -9,7 +9,7 @@ import (
 )
 
 var (
-    version    = "v0.1.0"
+    version    = "0.2.0"
     goVersion  = runtime.Version()
     versionStr = fmt.Sprintf("Akscreds version %v\n%v", version, goVersion)
 )
