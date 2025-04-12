@@ -1,77 +1,52 @@
 package main
 
 import (
-    "flag"
-    "fmt"
-    "log"
-    "os"
-    "runtime"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"runtime"
 )
 
 var (
-    version    = "0.2.0"
-    goVersion  = runtime.Version()
-    versionStr = fmt.Sprintf("Akscreds version %v\n%v", version, goVersion)
+	version    = "0.3.0"
+	goVersion  = runtime.Version()
+	versionStr = fmt.Sprintf("Akscreds version %v\n%v", version, goVersion)
 )
 
-type Config struct {
-    kubeConfigLocation string
-}
-
 func (c *Config) fillDefaults() {
-    c.kubeConfigLocation = fmt.Sprintf("%s/.kube/config", os.Getenv("HOME"))
+	c.kubeConfigLocation = fmt.Sprintf("%s/.kube/configs/", os.Getenv("HOME"))
+	c.subscriptionFilter = "kaas"
+	c.version = false
 }
 
 func main() {
-    // TODO: Maybe rework all the shell commands to talk via the sdk. Removes the dependency on the 'az' binary.
-    config := Config{}
-    config.fillDefaults()
+	config := Config{}
+	config.fillDefaults()
 
-    versionFlag := flag.Bool("v", false, "Displays the version number of Akscreds and Go.")
-    allTenantFlag := flag.Bool("A", false, "Retrieve credentials from all tenants which are shown in 'az account list'")
-    rewriteServerEndpointOpt := flag.String("r", "", "Rewrite server endpoint in from saved config to specified value. ")
-    kubeConfigLocationOpt := flag.String("f", config.kubeConfigLocation, "Kubeconfig file to update.")
-    flag.Parse()
-    if *versionFlag {
-        fmt.Println(versionStr)
-        os.Exit(0)
-    }
+	flag.Bool("v", config.version, "Displays the version number of Akscreds and Go.")
+	flag.String("s", config.subscriptionFilter, "Filter clusters by subscription name (regEx).")
+	flag.String("f", config.kubeConfigLocation, "Kubeconfig file to update.")
 
-    loggedInTenantId, err := loginAccount()
-    if err != nil {
-        log.Fatalln(err)
-    }
+	flag.Parse()
+	if config.version {
+		fmt.Println(versionStr)
+		os.Exit(0)
+	}
 
-    subscriptions := Subscriptions{}
-    subscriptions, err = retrieveAllSubscriptions()
-    if err != nil {
-        log.Fatalln(err)
-    }
+	account := Account{}
+	_, err := account.login()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-    var subscriptionNames []string
-    if *allTenantFlag {
-        subscriptionNames = subscriptions.getAllSubscriptionNames()
-    } else {
-        subscriptionNames = subscriptions.getAllSubscriptionNamesByTenantIds([]string{loggedInTenantId})
-    }
+	cleanupCredentials(config.kubeConfigLocation)
 
-    for _, subscriptionName := range subscriptionNames {
-        err := setActiveSubscription(subscriptionName)
-        if err != nil {
-            log.Fatalln(err)
-        }
-        fmt.Printf("Setting subscription name to: \"%s\"\n", subscriptionName)
+	subscriptions, _ := account.getSubscriptions(config)
+	clusters := getClusters(subscriptions)
+	getCredentialsClusters(clusters, config.kubeConfigLocation)
 
-        clusters, err := retrieveClusters()
-        if err != nil {
-            log.Println(err)
-        }
-
-        for _, cluster := range clusters {
-            saveKubeConfig(cluster.Name, cluster.ResourceGroup, *kubeConfigLocationOpt)
-            if *rewriteServerEndpointOpt != "" {
-                rewriteClusterEndpoint(cluster.Name, *kubeConfigLocationOpt, *rewriteServerEndpointOpt)
-            }
-        }
-    }
+	cmd := exec.Command("kubelogin", "convert-kubeconfig", "-l", "azurecli")
+	err = cmd.Run()
 }

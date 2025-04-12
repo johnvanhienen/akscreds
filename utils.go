@@ -1,10 +1,7 @@
 package main
 
-func removeItemFromSlice(s []string, r string) []string {
-	for i, v := range s {
-		if v == r {
-			return append(s[:i], s[i+1:]...)
-		}
-	}
-	return s
+type Config struct {
+	kubeConfigLocation string
+	subscriptionFilter string
+	version            bool
 }
