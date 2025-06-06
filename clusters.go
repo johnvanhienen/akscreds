@@ -14,11 +14,11 @@ type Cluster struct {
 	SubscriptionName string
 }
 
-func getClustersPerSubscription(subscriptionName string, ch chan<- []Cluster) {
+func getClustersPerSubscription(subscriptionName string, ch chan<- []Cluster) (err error) {
 	cmd := exec.Command("az", "aks", "list", "--subscription", subscriptionName)
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	err := cmd.Run()
+	err = cmd.Run()
 
 	if err != nil {
 		fmt.Errorf("could not retrieve clusters, error: %s", err)
@@ -32,6 +32,7 @@ func getClustersPerSubscription(subscriptionName string, ch chan<- []Cluster) {
 		clusters[i].SubscriptionName = subscriptionName
 	}
 	ch <- clusters
+	return nil
 }
 
 func getClusters(subscriptions []Subscription) (result []Cluster) {
@@ -42,7 +43,10 @@ func getClusters(subscriptions []Subscription) (result []Cluster) {
 		wg.Add(1)
 		go func(subName string) {
 			defer wg.Done()
-			getClustersPerSubscription(subName, clusters)
+			err := getClustersPerSubscription(subName, clusters)
+			if err != nil {
+				fmt.Println(err)
+			}
 		}(subscription.Name)
 	}
 	go func() {
@@ -78,5 +82,11 @@ func getCredentialsClusters(clusters []Cluster, kubeConfigLocation string) {
 		if err != nil {
 			fmt.Println(err)
 		}
+	}
+
+	cmd := exec.Command("kubelogin", "convert-kubeconfig", "-l", "azurecli")
+	err := cmd.Run()
+	if err != nil {
+		fmt.Println(err)
 	}
 }
